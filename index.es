@@ -312,3 +312,74 @@ GET /series/_search
     }
   }
 }
+
+// 306-pagination.es
+
+GET /movies/_search
+{
+  "from": 0, // offset
+  "size": 2, // limit
+  "query": {
+    "match": {
+      "title": "star"
+    }
+  }
+}
+
+// 307-sorting.es
+
+sorting is tricky when dealing with analyzed fields (should use a subfield)
+
+GET /movies/_search?sort=year
+
+DELETE /movies
+
+PUT /movies
+{
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}
+
+GET /movies/_search?sort=title.raw
+
+GET /movies/_search
+{
+  "sort": {
+    "title.raw": "desc"
+  }
+}
+
+// 309-exercise.es
+
+GET /movies/_search
+{
+  "sort": {
+    "title.raw": "asc"
+  },
+  "query": {
+    "bool": {
+      "must": {
+        "match": {
+          "genre": "sci-fi"
+        }
+      },
+      "filter": {
+        "range": {
+          "year": {
+            "lt": 1960
+          }
+        }
+      }
+    }
+  }
+}
