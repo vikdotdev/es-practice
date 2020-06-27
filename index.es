@@ -383,3 +383,227 @@ GET /movies/_search
     }
   }
 }
+
+// 310-fuzziness
+levenstein edit distance
+substitutions -> intersteller
+insertions -> intersstellar
+deletions -> interstelar
+
+all of above have edit distance of 1
+
+fuzziness `auto` changes value based on string lenght
+
+GET /movies/_search
+{
+  "query": {
+    "match": {
+      "title": "interstellar"
+    }
+  }
+}
+
+
+GET /movies/_search
+{
+  "query": {
+    "fuzzy": {
+      "title": {
+        "value": "intersteller",
+        "fuzziness": 1
+      }
+    }
+  }
+}
+
+GET /movies/_search
+{
+  "query": {
+    "fuzzy": {
+      "title": {
+        "value": "intersteler",
+        "fuzziness": "auto"
+      }
+    }
+  }
+}
+
+// notice that `fuzzy` replaces `match`
+
+// 311 partial matches?
+
+DELETE /movies
+
+PUT /movies
+{
+  "mappings":{
+    "properties": {
+      "year": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+GET /movies
+
+// bulk import movies from earlier...
+
+GET /movies/_search
+{
+  "query": {
+    "prefix": {
+      "year": "201"
+    }
+  }
+}
+
+// prefix/wildcard query does not work on date type?
+
+GET /movies/_search
+{
+  "query": {
+    "wildcard": {
+      "year": "1*"
+    }
+  }
+}
+
+// there's also regex query, which uses Apache Lucene regex syntax
+
+// 312 match-query-prefix for autocomplete
+
+// and easy way to achieve autocomplete
+// but it's not optimal
+GET /movies/_search
+{
+  "query": {
+    "match_phrase_prefix": {
+      "title": {
+        "query": "star awa",
+        "slop": 10
+      }
+    }
+  }
+}
+
+
+// 313 ngrams
+// take word `star`
+// unigrams s t a r
+// bigrams st ta ar
+// trigrams sta tar
+// 4-grams star
+
+// edge n-grams
+// s
+// st
+// sta
+// star
+
+// there's also such a thing as `completion suggester` which is a mechanism to manually control your autocompletion
+
+DELETE /movies
+
+PUT /movies
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "autocomplete": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20
+        }
+      },
+      "analyzer": {
+        "autocomplete": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "autocomplete"
+          ]
+        }
+      }
+    }
+  }
+}
+
+// test analyzer
+GET /movies/_analyze
+{
+  "analyzer": "autocomplete",
+  "text": "StA"
+}
+
+// notice how here we use mappings in url
+PUT /movies/_mappings
+{
+  "properties": {
+    "title": {
+      "type": "text",
+      "analyzer": "autocomplete"
+    }
+  }
+}
+
+// bulk import movies here
+
+GET /movies/_search
+{
+  "query": {
+    "match": {
+      "title": "sta"
+    }
+  }
+}
+
+// this came back and it's not how it's supposed to work
+// "title" : "Plan 9 from Outer Space", (because of "S... in Space")
+// that's because we're mapped the autocomplete analyzer on index time instead of query time
+
+GET /movies/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "sta",
+        "analyzer": "standard"
+      }
+    }
+  }
+}
+
+// it's not working as intended if we try to search for star trek only
+GET /movies/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "star tr",
+        "analyzer": "standard"
+      }
+    }
+  }
+}
+
+
+// 402 importing from csv with python
+
+DELETE /movies
+
+PUT /_bulk --data-binary @moremovies.json
+
+PUT /_bulk
+
+// ... insert bulk info here if data-binary isn't working
+
+GET /movies/_search
+{
+  "query": {
+    "match": {
+      "title": "whiplash"
+    }
+  }
+}
